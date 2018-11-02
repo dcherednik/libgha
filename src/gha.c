@@ -202,3 +202,14 @@ void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx* ctx)
 	gha_generate_sine(ctx->tmp_buf, ctx->size, info->freq, info->phase);
 	gha_estimate_magnitude(pcm, ctx->tmp_buf, ctx->size, info);
 }
+
+void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx* ctx)
+{
+	int i;
+	FLOAT magnitude;
+	gha_analyze_one(pcm, info, ctx);
+	magnitude = info->magnitude;
+
+	for (i = 0; i < ctx->size; i++)
+		pcm[i] -= ctx->tmp_buf[i] * magnitude;
+}

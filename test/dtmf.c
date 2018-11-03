@@ -41,8 +41,7 @@ int main(int argc, char** argv) {
 	}
 
 	struct gha_info res[2];
-	gha_extract_one(buf, &res[0], ctx);
-	gha_extract_one(buf, &res[1], ctx);
+	gha_extract_many_simple(buf, &res[0], 2, ctx);
 
 	if (res[0].frequency > res[1].frequency) {
 		struct gha_info tmp;

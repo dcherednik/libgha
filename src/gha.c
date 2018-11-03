@@ -213,3 +213,11 @@ void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 	for (i = 0; i < ctx->size; i++)
 		pcm[i] -= ctx->tmp_buf[i] * magnitude;
 }
+
+void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx)
+{
+	int i;
+	for (i = 0; i < k; i++) {
+		gha_extract_one(pcm, info + i, ctx);
+	}
+}

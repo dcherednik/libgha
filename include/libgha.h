@@ -28,13 +28,34 @@ void gha_free_ctx(gha_ctx_t ctx);
 
 /*
  * Performs one GHA step for given PCM signal,
- * the result will be writen in to given gha_ingo structure
+ * the result will be writen in to given gha_info structure
+ *
+ * Complexity: O(n * log(n)),
+ * where n is number of samples to anayze
  */
 void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx);
 
 /*
- * Performs one GHA step and extract analysed harmonic from given PCM signal
+ * Performs one GHA step and extracts analysed harmonic from given PCM signal
+ * the result will be writen in to given gha_info structure
+ *
+ * Complexity: O(n * log(n)),
+ * where n is number of samples to anayze
  */
 void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx);
+
+/*
+ * Performs k GHA steps and extracts analysed harmonics from given PCM signal.
+ *
+ * The result will be writen in to given gha_info structures
+ * corresponding ammount of memory should be allocated (k * sizeof(struct gha_info))
+ *
+ * Effectively this function is equivalent of calling gha_extract_one k times
+ *
+ * Complexity: O(n * log(n) * K),
+ * where n is number of samples to anayze, k is number of harmonics to extract
+ *
+ */
+void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx);
 
 #endif

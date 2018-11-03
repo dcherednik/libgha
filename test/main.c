@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 
 	long long len = atoll(argv[3]);
 
-	gha_ctx* ctx;
+	gha_ctx_t ctx;
 
 	float* buf = malloc(len * sizeof(float));
 	if (!buf)
@@ -51,11 +51,11 @@ int main(int argc, char** argv) {
 		double freq = atof(argv[4]);
 		double phase = atof(argv[5]);
 		double magn = atof(argv[6]);
-		if (fabs(freq - res.freq) > 0.001 || compare_phase(phase, res.phase, 0.001) || fabs(magn - res.magnitude) > 0.001)
+		if (fabs(freq - res.frequency) > 0.001 || compare_phase(phase, res.phase, 0.001) || fabs(magn - res.magnitude) > 0.001)
 			return 1;
 		return 0;
 	} else {
-	    fprintf(stderr, "Result: freq: %f, phase: %f, magn: %f\n", res.freq, res.phase, res.magnitude); 
+	    fprintf(stderr, "Result: freq: %f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
 	}
 
 	return 0;

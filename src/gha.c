@@ -17,7 +17,7 @@ struct gha_ctx {
 	FLOAT* tmp_buf;
 };
 
-static void gha_init_window(gha_ctx* ctx)
+static void gha_init_window(gha_ctx_t ctx)
 {
 	size_t i;
 	size_t n = ctx->size + 1;
@@ -26,9 +26,9 @@ static void gha_init_window(gha_ctx* ctx)
 	}
 }
 
-gha_ctx* gha_create_ctx(size_t size)
+gha_ctx_t gha_create_ctx(size_t size)
 {
-	gha_ctx* ctx = malloc(sizeof(struct gha_ctx));
+	gha_ctx_t ctx = malloc(sizeof(struct gha_ctx));
 	if (!ctx)
 		return NULL;
 
@@ -70,7 +70,7 @@ exit_free_gha_ctx:
 	return NULL;
 }
 
-void gha_free_ctx(gha_ctx* ctx)
+void gha_free_ctx(gha_ctx_t ctx)
 {
 	free(ctx->fft_out);
 	free(ctx->tmp_buf);
@@ -80,7 +80,7 @@ void gha_free_ctx(gha_ctx* ctx)
 	free(ctx);
 }
 
-static size_t gha_estimate_bin(gha_ctx* ctx)
+static size_t gha_estimate_bin(gha_ctx_t ctx)
 {
 	size_t i, end;
 	size_t j = 0;
@@ -156,7 +156,7 @@ static void gha_search_omega_newton(const FLOAT* pcm, size_t bin, size_t size, s
 
 		// Last iteration
 		if (loop == MAX_LOOPS) {
-		    result->freq = omega_rad;
+		    result->frequency = omega_rad;
 		    //assume zero-phase sine
 		    result->phase = M_PI / 2 - atan(Xi / Xr);
 		    if (Xr < 0)
@@ -186,7 +186,7 @@ static void gha_estimate_magnitude(const FLOAT* pcm, const FLOAT* regen, size_t 
 	result->magnitude = t1 / t2;
 }
 
-void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx* ctx)
+void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 {
 	int i = 0;
 	int bin = 0;
@@ -199,11 +199,11 @@ void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx* ctx)
 	bin = gha_estimate_bin(ctx);
 
 	gha_search_omega_newton(ctx->tmp_buf, bin, ctx->size, info);
-	gha_generate_sine(ctx->tmp_buf, ctx->size, info->freq, info->phase);
+	gha_generate_sine(ctx->tmp_buf, ctx->size, info->frequency, info->phase);
 	gha_estimate_magnitude(pcm, ctx->tmp_buf, ctx->size, info);
 }
 
-void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx* ctx)
+void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 {
 	int i;
 	FLOAT magnitude;

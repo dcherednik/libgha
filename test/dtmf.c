@@ -12,6 +12,17 @@ void usage(const char* selfname) {
 	fprintf(stderr, "EXPECTED_MAGNITUDE_(LOW|HIGH) - expected magnitude (0 - 1)\n");
 }
 
+static void calc_resuidal(float* resuidal, size_t size, void* user_ctx)
+{
+	int i;
+	double s = 0.0;
+	float* result = (float*)user_ctx;
+	for (i = 0; i < size; i++) {
+		s += resuidal[i] * resuidal[i];
+	}
+	*result = sqrt(s / size);
+}
+
 int main(int argc, char** argv) {
 	if (argc != 4 && argc != 8) {
 		usage(argv[0]);
@@ -23,7 +34,8 @@ int main(int argc, char** argv) {
 	gha_ctx_t ctx;
 
 	float* buf = malloc(len * sizeof(float));
-	if (!buf)
+	float* buf2 = malloc(len * sizeof(float));
+	if (!buf || !buf2)
 		abort();
 
 	if (load_file(argv[1], len, atoi(argv[2]), 8, buf)) {
@@ -32,8 +44,12 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-
+	//Make copy of data to adjust extracted params
+	memcpy(buf2, buf, sizeof(float) * len);
 	ctx = gha_create_ctx(len);
+
+	float resuidal;
+	gha_set_user_resuidal_cb(&calc_resuidal, &resuidal, ctx);
 	if (!ctx) {
 		fprintf(stderr, "Unable to create gha ctx\n");
 		free(buf);
@@ -43,12 +59,22 @@ int main(int argc, char** argv) {
 	struct gha_info res[2];
 	gha_extract_many_simple(buf, &res[0], 2, ctx);
 
+	float resuidal_1 = resuidal;
+
 	if (res[0].frequency > res[1].frequency) {
 		struct gha_info tmp;
 		memcpy(&tmp, &res[0], sizeof(struct gha_info));
 		memcpy(&res[0], &res[1], sizeof(struct gha_info));
 		memcpy(&res[1], &tmp, sizeof(struct gha_info));
 	}
+
+	gha_adjust_info(buf2, res, 2, ctx);
+
+	if (resuidal > resuidal_1) {
+		fprintf(stderr, "gha_adjust_info wrong result\n");
+		return 1;
+	}
+
 
 	gha_free_ctx(ctx);
 	free(buf);
@@ -69,5 +95,6 @@ int main(int argc, char** argv) {
 	} else {
 	    fprintf(stderr, "dtmf result: low freq: %f, magn: %f, high freq: %f, magn: %f\n",
 			res[0].frequency, res[0].magnitude, res[1].frequency, res[1].magnitude);
+	    return 0;
 	}
 }

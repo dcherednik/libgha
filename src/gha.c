@@ -1,3 +1,5 @@
+#include "sle.h"
+
 #include <include/libgha.h> 
 
 #include <kissfft/tools/kiss_fftr.h>
@@ -15,6 +17,9 @@ struct gha_ctx {
 	FLOAT* window;
 
 	FLOAT* tmp_buf;
+
+	void (*resuidal_cb)(FLOAT* resuidal, size_t size, void* user_ctx);
+	void* user_ctx;
 };
 
 static void gha_init_window(gha_ctx_t ctx)
@@ -33,6 +38,8 @@ gha_ctx_t gha_create_ctx(size_t size)
 		return NULL;
 
 	ctx->size = size;
+	ctx->resuidal_cb = NULL;
+	ctx->user_ctx = NULL;
 
 	ctx->fftr = kiss_fftr_alloc(size, 0, NULL, NULL);
 	if (!ctx->fftr)
@@ -68,6 +75,12 @@ exit_free_fftr_ctx:
 exit_free_gha_ctx:
 	free(ctx);
 	return NULL;
+}
+
+void gha_set_user_resuidal_cb(void (*cb)(FLOAT* resuidal, size_t size, void* user_ctx), void* user_ctx, gha_ctx_t ctx)
+{
+	ctx->user_ctx = user_ctx;
+	ctx->resuidal_cb = cb;
 }
 
 void gha_free_ctx(gha_ctx_t ctx)
@@ -186,6 +199,155 @@ static void gha_estimate_magnitude(const FLOAT* pcm, const FLOAT* regen, size_t 
 	result->magnitude = t1 / t2;
 }
 
+int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t dim, gha_ctx_t ctx)
+{
+	size_t loop;
+	size_t i, j, k, n;
+
+	const size_t MAX_LOOPS = 7;
+
+	for (loop = 0; loop < MAX_LOOPS; loop++) {
+		memcpy(ctx->tmp_buf, pcm, ctx->size * sizeof(FLOAT));
+
+		// Use VLA for a while
+		FLOAT BA[dim][ctx->size];
+		FLOAT Bw[dim][ctx->size];
+		FLOAT Bp[dim][ctx->size];
+		FLOAT BAw[dim][ctx->size];
+		FLOAT BAp[dim][ctx->size];
+		FLOAT Bww[dim][ctx->size];
+		FLOAT Bwp[dim][ctx->size];
+		FLOAT Bpp[dim][ctx->size];
+
+		for (n = 0; n < ctx->size; n++) {
+			for (k = 0; k < dim; k++) {
+				FLOAT Ak = (info+k)->magnitude;
+				FLOAT wk = (info+k)->frequency;
+				FLOAT pk = (info+k)->phase;
+				FLOAT s = sin(wk * n + pk);
+				FLOAT c = cos(wk * n + pk);
+				ctx->tmp_buf[n] -= Ak * s;
+
+				BA[k][n] = -s;
+				Bw[k][n] = -Ak * n * c;
+				Bp[k][n] = -Ak * c;
+
+				BAw[k][n] = -n * c;
+				BAp[k][n] = -c;
+				Bww[k][n] = Ak * n * n * s;
+				Bwp[k][n] = Ak * n * s;
+				Bpp[k][n] = Ak * s;
+
+			}
+		}
+
+		double M[dim * 3][dim * 3 + 1];
+		bzero(M, dim * 3 * (dim * 3 + 1) * sizeof(double));
+		for (i = 0; i < dim; i++) {
+			for (j = 0; j < dim; j++) {
+				for (n = 0; n < ctx->size; n++) {
+					if (i == j) {
+						M[i + dim * 0][j + dim * 0] += BA[i][n] * BA[i][n];
+						M[i + dim * 0][j + dim * 1] += ctx->tmp_buf[n] * BAw[i][n] + BA[i][n] * Bw[i][n];
+						M[i + dim * 0][j + dim * 2] += ctx->tmp_buf[n] * BAp[i][n] + BA[i][n] * Bp[i][n];
+
+						M[i + dim * 1][j + dim * 1] += ctx->tmp_buf[n] * Bww[i][n] + Bw[i][n] * Bw[i][n];
+						M[i + dim * 1][j + dim * 2] += ctx->tmp_buf[n] * Bwp[i][n] + Bw[i][n] * Bp[i][n];
+
+						M[i + dim * 2][j + dim * 2] += ctx->tmp_buf[n] * Bpp[i][n] + Bp[i][n] * Bp[i][n];
+					} else {
+						M[i + dim * 0][j + dim * 0] += BA[i][n] * BA[j][n];
+						M[i + dim * 0][j + dim * 1] += BA[i][n] * Bw[j][n];
+						M[i + dim * 0][j + dim * 2] += BA[i][n] * Bp[j][n];
+
+						M[i + dim * 1][j + dim * 1] += Bw[i][n] * Bw[j][n];
+						M[i + dim * 1][j + dim * 2] += Bw[i][n] * Bp[j][n];
+
+						M[i + dim * 2][j + dim * 2] += Bp[i][n] * Bp[j][n];
+					}
+				}
+				M[i + dim * 0][j + dim * 0] *= 2;
+				M[i + dim * 0][j + dim * 1] *= 2;
+				M[i + dim * 0][j + dim * 2] *= 2;
+
+				M[i + dim * 1][j + dim * 1] *= 2;
+				M[i + dim * 1][j + dim * 2] *= 2;
+
+				M[i + dim * 2][j + dim * 2] *= 2;
+
+
+				M[i + dim * 0][j + dim * 1] = M[i + dim * 1][j + dim * 0];
+				M[i + dim * 0][j + dim * 2] = M[i + dim * 2][j + dim * 0];
+				M[i + dim * 1][j + dim * 2] = M[i + dim * 2][j + dim * 1];
+			}
+		}
+
+		for (k = 0; k < dim; k++) {
+			for (n = 0; n < ctx->size; n++) {
+				M[k + dim * 0][dim * 3] += ctx->tmp_buf[n] * BA[k][n];
+				M[k + dim * 1][dim * 3] += ctx->tmp_buf[n] * Bw[k][n];
+				M[k + dim * 2][dim * 3] += ctx->tmp_buf[n] * Bp[k][n];
+			}
+			M[k + dim * 0][dim * 3] *= 2;
+			M[k + dim * 1][dim * 3] *= 2;
+			M[k + dim * 2][dim * 3] *= 2;
+		}
+
+		double fx0[dim * 3];
+		bzero(fx0, dim * 3 * sizeof(double));
+		if(sle_solve(&M[0][0], dim * 3, fx0)) {
+			return -1;
+		}
+
+		for (k = 0; k < dim; k++) {
+			//fprintf(stderr, "delta1: %f\n", fx0[k + dim * 0]);
+			//fprintf(stderr, "delta2: %f\n", fx0[k + dim * 1]);
+			//fprintf(stderr, "delta3: %f\n", fx0[k + dim * 2]);
+			(info+k)->magnitude -= (fx0[k + dim * 0] * 0.8);
+			(info+k)->frequency -= (fx0[k + dim * 1] * 0.8);
+			(info+k)->phase -=     (fx0[k + dim * 2] * 0.8);
+		}
+
+		for (k = 0; k < dim; k++) {
+			if ((info+k)->magnitude < 0) {
+				(info+k)->magnitude *= -1;
+				(info+k)->phase += M_PI;
+			}
+
+			if ((info+k)->magnitude > 1) {
+				//TODO: ???
+				(info+k)->magnitude = 0.5;
+			}
+		}
+
+		for (k = 0; k < dim; k++) {
+			if ((info + k)->frequency < 0) {
+				//fprintf(stderr, "negative freq\n");
+				(info + k)->frequency *= -1;
+				(info + k)->phase = 2 * M_PI - (info + k)->phase;
+			}
+			while ((info + k)->frequency > M_PI * 2.0) {
+				//fprintf(stderr, "freq over\n");
+				(info + k)->frequency -= M_PI * 2.0;
+			}
+			if ((info + k)->frequency > M_PI) {
+				//fprintf(stderr, "freq ??\n");
+				(info + k)->frequency = 2 * M_PI - (info + k)->frequency;
+			}
+		}
+
+		for (k = 0; k < dim; k++) {
+			while ((info+k)->phase > M_PI * 2.0) {
+				(info+k)->phase -= M_PI * 2;
+			}
+			while ((info + k)->phase < 0) {
+				(info+k)->phase += M_PI * 2;
+			}
+		}
+	}
+	return 0;
+}
+
 void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 {
 	int i = 0;
@@ -212,6 +374,9 @@ void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 
 	for (i = 0; i < ctx->size; i++)
 		pcm[i] -= ctx->tmp_buf[i] * magnitude;
+
+	if (ctx->resuidal_cb)
+		ctx->resuidal_cb(pcm, ctx->size, ctx->user_ctx);
 }
 
 void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx)
@@ -220,4 +385,13 @@ void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ct
 	for (i = 0; i < k; i++) {
 		gha_extract_one(pcm, info + i, ctx);
 	}
+}
+
+int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx)
+{
+	int rv = gha_adjust_info_newton_md(pcm, info, k, ctx);
+	if (ctx->resuidal_cb)
+		ctx->resuidal_cb(ctx->tmp_buf, ctx->size, ctx->user_ctx);
+
+	return rv;
 }

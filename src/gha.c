@@ -130,18 +130,30 @@ static void gha_search_omega_newton(const FLOAT* pcm, size_t bin, size_t size, s
 		double ddXr = 0;
 		double ddXs = 0;
 
+		const double a = cos(omega_rad);
+		const double b = sin(omega_rad);
+		double c = 1.0;
+		double s = 0.0;
+
 		for (n = 0; n < size; n++) {
-			double c = pcm[n] * cos(omega_rad * n);
-			double s = pcm[n] * sin(omega_rad * n);
+			double cm = pcm[n] * c;
+			double sm = pcm[n] * s;
 			double tc, ts;
-			Xr += c;
-			Xi += s;
-			tc = n * c;
-			ts = n * s;
+			Xr += cm;
+			Xi += sm;
+			tc = n * cm;
+			ts = n * sm;
 			dXr -= ts;
 			dXi += tc;
 			ddXr -= n * tc;
 			ddXs -= n * ts;
+
+			const double new_c = a * c - b * s;
+			const double new_s = b * c + a * s;
+			c = new_c;
+			s = new_s;
+
+
 		}
 
 		double F = Xr * dXr + Xi * dXi;

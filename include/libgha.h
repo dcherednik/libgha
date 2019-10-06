@@ -1,5 +1,5 @@
 #ifndef LIBGHA_H
-#define LIBGHA_h
+#define LIBGHA_H
 
 #define FLOAT float
 

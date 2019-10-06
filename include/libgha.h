@@ -1,6 +1,11 @@
 #ifndef LIBGHA_H
 #define LIBGHA_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
 #define FLOAT float
 
 #include <stddef.h>
@@ -80,5 +85,9 @@ int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t
  *
  */
 void gha_set_user_resuidal_cb(void (*cb)(FLOAT* resuidal, size_t size, void* user_ctx), void* user_ctx, gha_ctx_t ctx);
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif

@@ -19,7 +19,7 @@ int sle_solve(double *a, size_t n, double *x) {
 		max = fabs(a[col*k + k]);
 		index = k;
 		for (i = k + 1; i < n; i++) {
-			t = abs(a[col * i + k]);
+			t = fabs(a[col * i + k]);
 			if (t > max) {
 				max = t;
 				index = i;

@@ -1,15 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <math.h>
 
 static inline int compare_phase(float a, float b, float delta) {
-	if (abs(a - b) < delta)
+	if (fabs(a - b) < delta)
 		return 0;
 	a = fmod(a + M_PI, 2 * M_PI);
 	b = fmod(b + M_PI, 2 * M_PI);
 //	fprintf(stderr, "%f %f  %f\n", a, b, delta);
-	if (abs(a - b) < delta)
+	if (fabs(a - b) < delta)
 		return 0;
 	return -1;
 }

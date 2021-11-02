@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
 		double freq = atof(argv[4]);
 		double phase = atof(argv[5]);
 		double magn = atof(argv[6]);
-		if (fabs(freq - res.frequency) > 0.001 || compare_phase(phase, res.phase, 0.001) || fabs(magn - res.magnitude) > 0.001)
+		if (fabs(freq - res.frequency) > 0.001 || compare_phase(phase, res.phase, 0.01) || fabs(magn - res.magnitude) > 0.001)
 			return 1;
 		return 0;
 	} else {

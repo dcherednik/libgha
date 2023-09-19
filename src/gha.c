@@ -254,7 +254,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		}
 
 		double M[dim * 3][dim * 3 + 1];
-		bzero(M, dim * 3 * (dim * 3 + 1) * sizeof(double));
+		memset(M, '\0', dim * 3 * (dim * 3 + 1) * sizeof(double));
 		for (i = 0; i < dim; i++) {
 			for (j = 0; j < dim; j++) {
 				for (n = 0; n < ctx->size; n++) {
@@ -306,7 +306,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		}
 
 		double fx0[dim * 3];
-		bzero(fx0, dim * 3 * sizeof(double));
+		memset(fx0, '\0', dim * 3 * sizeof(double));
 		if(sle_solve(&M[0][0], dim * 3, fx0)) {
 			return -1;
 		}

@@ -2,7 +2,7 @@
 
 #include <include/libgha.h> 
 
-#include <kissfft/tools/kiss_fftr.h>
+#include <tools/kiss_fftr.h>
 
 /*
  * Ref: http://www.apsipa.org/proceedings_2009/pdf/WA-L3-3.pdf

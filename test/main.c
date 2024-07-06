@@ -1,5 +1,3 @@
-#include <include/libgha.h>
-
 #include "common.h"
 
 void usage(const char* selfname) {
@@ -24,7 +22,7 @@ int main(int argc, char** argv) {
 
 	gha_ctx_t ctx;
 
-	float* buf = malloc(len * sizeof(float));
+	FLOAT* buf = malloc(len * sizeof(FLOAT));
 	if (!buf)
 		abort();
 

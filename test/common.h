@@ -1,10 +1,11 @@
+#include <include/libgha.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
 
-static inline int compare_phase(float a, float b, float delta) {
+static inline int compare_phase(FLOAT a, FLOAT b, FLOAT delta) {
 	if (fabs(a - b) < delta)
 		return 0;
 	a = fmod(a + M_PI, 2 * M_PI);
@@ -15,7 +16,7 @@ static inline int compare_phase(float a, float b, float delta) {
 	return -1;
 }
 
-static inline int load_file(const char* name, size_t len, size_t offset, size_t bits, float* buf)
+static inline int load_file(const char* name, size_t len, size_t offset, size_t bits, FLOAT* buf)
 {
 	union {
 	    char b[4];

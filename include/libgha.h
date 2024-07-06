@@ -6,7 +6,12 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-#define FLOAT float
+#ifdef GHA_USE_DOUBLE_API
+#	define kiss_fft_scalar double
+#	define FLOAT double
+#else
+#	define FLOAT float
+#endif
 
 #include <stddef.h>
 

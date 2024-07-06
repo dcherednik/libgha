@@ -1,5 +1,3 @@
-#include <include/libgha.h>
-
 #include "common.h"
 
 void usage(const char* selfname) {
@@ -12,11 +10,11 @@ void usage(const char* selfname) {
 	fprintf(stderr, "EXPECTED_MAGNITUDE_(LOW|HIGH) - expected magnitude (0 - 1)\n");
 }
 
-static void calc_resuidal(float* resuidal, size_t size, void* user_ctx)
+static void calc_resuidal(FLOAT* resuidal, size_t size, void* user_ctx)
 {
 	int i;
 	double s = 0.0;
-	float* result = (float*)user_ctx;
+	FLOAT* result = (FLOAT*)user_ctx;
 	for (i = 0; i < size; i++) {
 		s += resuidal[i] * resuidal[i];
 	}
@@ -33,8 +31,8 @@ int main(int argc, char** argv) {
 
 	gha_ctx_t ctx;
 
-	float* buf = malloc(len * sizeof(float));
-	float* buf2 = malloc(len * sizeof(float));
+	FLOAT* buf = malloc(len * sizeof(FLOAT));
+	FLOAT* buf2 = malloc(len * sizeof(FLOAT));
 	if (!buf || !buf2)
 		abort();
 
@@ -45,10 +43,10 @@ int main(int argc, char** argv) {
 	}
 
 	//Make copy of data to adjust extracted params
-	memcpy(buf2, buf, sizeof(float) * len);
+	memcpy(buf2, buf, sizeof(FLOAT) * len);
 	ctx = gha_create_ctx(len);
 
-	float resuidal;
+	FLOAT resuidal;
 	gha_set_user_resuidal_cb(&calc_resuidal, &resuidal, ctx);
 	if (!ctx) {
 		fprintf(stderr, "Unable to create gha ctx\n");
@@ -59,7 +57,7 @@ int main(int argc, char** argv) {
 	struct gha_info res[2];
 	gha_extract_many_simple(buf, &res[0], 2, ctx);
 
-	float resuidal_1 = resuidal;
+	FLOAT resuidal_1 = resuidal;
 
 	if (res[0].frequency > res[1].frequency) {
 		struct gha_info tmp;

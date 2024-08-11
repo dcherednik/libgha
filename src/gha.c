@@ -407,3 +407,8 @@ int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t
 
 	return rv;
 }
+
+const FLOAT* gha_get_analyzed(gha_ctx_t ctx)
+{
+    return ctx->tmp_buf;
+}

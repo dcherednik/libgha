@@ -5,6 +5,14 @@
 #include <string.h>
 #include <math.h>
 
+#define UT_CHECK_EQ_FLOAT(V1, V2) \
+    fct_xchk(\
+        ((int)(fabs((V1)-(V2)) < 0.000001)),\
+        "chk_eq_flt: %f != %f",\
+        (V1),\
+        (V2)\
+        )
+
 static inline int compare_phase(FLOAT a, FLOAT b, FLOAT delta) {
 	if (fabs(a - b) < delta)
 		return 0;

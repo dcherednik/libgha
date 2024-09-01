@@ -10,6 +10,7 @@
 
 struct gha_ctx {
 	size_t size;
+	size_t max_loops;
 	kiss_fftr_cfg fftr;
 
 	kiss_fft_cpx* fft_out;
@@ -17,6 +18,7 @@ struct gha_ctx {
 	FLOAT* window;
 
 	FLOAT* tmp_buf;
+	FLOAT max_magnitude;
 
 	void (*resuidal_cb)(FLOAT* resuidal, size_t size, void* user_ctx);
 	void* user_ctx;
@@ -38,6 +40,8 @@ gha_ctx_t gha_create_ctx(size_t size)
 		return NULL;
 
 	ctx->size = size;
+	ctx->max_loops = 7;
+	ctx->max_magnitude = 1;
 	ctx->resuidal_cb = NULL;
 	ctx->user_ctx = NULL;
 
@@ -75,6 +79,16 @@ exit_free_fftr_ctx:
 exit_free_gha_ctx:
 	free(ctx);
 	return NULL;
+}
+
+void gha_set_max_loops(gha_ctx_t ctx, size_t max_loops)
+{
+	ctx->max_loops = max_loops;
+}
+
+void gha_set_max_magnitude(gha_ctx_t ctx, FLOAT magnitude)
+{
+	ctx->max_magnitude = magnitude;
 }
 
 void gha_set_user_resuidal_cb(void (*cb)(FLOAT* resuidal, size_t size, void* user_ctx), void* user_ctx, gha_ctx_t ctx)
@@ -216,9 +230,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 	size_t loop;
 	size_t i, j, k, n;
 
-	const size_t MAX_LOOPS = 7;
-
-	for (loop = 0; loop < MAX_LOOPS; loop++) {
+	for (loop = 0; loop < ctx->max_loops; loop++) {
 		memcpy(ctx->tmp_buf, pcm, ctx->size * sizeof(FLOAT));
 
 		// Use VLA for a while
@@ -326,9 +338,9 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 				(info+k)->phase += M_PI;
 			}
 
-			if ((info+k)->magnitude > 1) {
+			if ((info+k)->magnitude > ctx->max_magnitude) {
 				//TODO: ???
-				(info+k)->magnitude = 0.5;
+				(info+k)->magnitude = ctx->max_magnitude * 0.5;
 			}
 		}
 

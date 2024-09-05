@@ -16,6 +16,7 @@ extern "C"
 #include <stddef.h>
 
 typedef struct gha_ctx *gha_ctx_t;
+typedef void (*resuidal_cb_t)(FLOAT* resuidal, size_t size, void* user_ctx);
 
 struct gha_info {
 	FLOAT frequency;
@@ -84,15 +85,7 @@ void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ct
  * where n is number of samples to anayze, k is number of harmonics to extract
  *
  */
-int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx);
-
-/*
- * Set callback to perform action on resuidal pcm signal.
- *
- * user_ctx is used to pass user context in to callback
- *
- */
-void gha_set_user_resuidal_cb(void (*cb)(FLOAT* resuidal, size_t size, void* user_ctx), void* user_ctx, gha_ctx_t ctx);
+int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx, resuidal_cb_t cb, void* user_ctx);
 
 const FLOAT* gha_get_analyzed(gha_ctx_t ctx);
 

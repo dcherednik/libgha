@@ -46,8 +46,6 @@ int main(int argc, char** argv) {
 	memcpy(buf2, buf, sizeof(FLOAT) * len);
 	ctx = gha_create_ctx(len);
 
-	FLOAT resuidal;
-	gha_set_user_resuidal_cb(&calc_resuidal, &resuidal, ctx);
 	if (!ctx) {
 		fprintf(stderr, "Unable to create gha ctx\n");
 		free(buf);
@@ -57,7 +55,8 @@ int main(int argc, char** argv) {
 	struct gha_info res[2];
 	gha_extract_many_simple(buf, &res[0], 2, ctx);
 
-	FLOAT resuidal_1 = resuidal;
+	FLOAT resuidal_simple;
+	calc_resuidal(buf, len, &resuidal_simple);
 
 	if (res[0].frequency > res[1].frequency) {
 		struct gha_info tmp;
@@ -66,10 +65,11 @@ int main(int argc, char** argv) {
 		memcpy(&res[1], &tmp, sizeof(struct gha_info));
 	}
 
-	gha_adjust_info(buf2, res, 2, ctx);
+	FLOAT resuidal_adjusted;
+	gha_adjust_info(buf2, res, 2, ctx, &calc_resuidal, &resuidal_adjusted);
 
-	if (resuidal > resuidal_1) {
-		fprintf(stderr, "gha_adjust_info wrong result\n");
+	if (resuidal_adjusted > resuidal_simple) {
+		fprintf(stderr, "gha_adjust_info wrong result: %f %f\n", resuidal_simple, resuidal_adjusted);
 		return 1;
 	}
 

@@ -19,9 +19,6 @@ struct gha_ctx {
 
 	FLOAT* tmp_buf;
 	FLOAT max_magnitude;
-
-	void (*resuidal_cb)(FLOAT* resuidal, size_t size, void* user_ctx);
-	void* user_ctx;
 };
 
 static void gha_init_window(gha_ctx_t ctx)
@@ -42,8 +39,6 @@ gha_ctx_t gha_create_ctx(size_t size)
 	ctx->size = size;
 	ctx->max_loops = 7;
 	ctx->max_magnitude = 1;
-	ctx->resuidal_cb = NULL;
-	ctx->user_ctx = NULL;
 
 	ctx->fftr = kiss_fftr_alloc(size, 0, NULL, NULL);
 	if (!ctx->fftr)
@@ -89,12 +84,6 @@ void gha_set_max_loops(gha_ctx_t ctx, size_t max_loops)
 void gha_set_max_magnitude(gha_ctx_t ctx, FLOAT magnitude)
 {
 	ctx->max_magnitude = magnitude;
-}
-
-void gha_set_user_resuidal_cb(void (*cb)(FLOAT* resuidal, size_t size, void* user_ctx), void* user_ctx, gha_ctx_t ctx)
-{
-	ctx->user_ctx = user_ctx;
-	ctx->resuidal_cb = cb;
 }
 
 void gha_free_ctx(gha_ctx_t ctx)
@@ -398,9 +387,6 @@ void gha_extract_one(FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 
 	for (i = 0; i < ctx->size; i++)
 		pcm[i] -= ctx->tmp_buf[i] * magnitude;
-
-	if (ctx->resuidal_cb)
-		ctx->resuidal_cb(pcm, ctx->size, ctx->user_ctx);
 }
 
 void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx)
@@ -411,16 +397,16 @@ void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ct
 	}
 }
 
-int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx)
+int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx, resuidal_cb_t cb, void* user_ctx)
 {
 	int rv = gha_adjust_info_newton_md(pcm, info, k, ctx);
-	if (ctx->resuidal_cb)
-		ctx->resuidal_cb(ctx->tmp_buf, ctx->size, ctx->user_ctx);
+	if (cb)
+		cb(ctx->tmp_buf, ctx->size, user_ctx);
 
 	return rv;
 }
 
 const FLOAT* gha_get_analyzed(gha_ctx_t ctx)
 {
-    return ctx->tmp_buf;
+	return ctx->tmp_buf;
 }

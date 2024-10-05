@@ -400,7 +400,7 @@ void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ct
 int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx, resuidal_cb_t cb, void* user_ctx)
 {
 	int rv = gha_adjust_info_newton_md(pcm, info, k, ctx);
-	if (cb)
+	if (cb && rv != -1)
 		cb(ctx->tmp_buf, ctx->size, user_ctx);
 
 	return rv;

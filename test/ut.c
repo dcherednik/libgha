@@ -71,11 +71,20 @@ FCT_BGN()
 			UT_CHECK_EQ_FLOAT(res.magnitude, 1.0);
 			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
 
-			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL);
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 0);
 			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
 			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
 			UT_CHECK_EQ_FLOAT(res.magnitude, 1.0);
 			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
+
+			res.magnitude = 0.95; /* add some error */
+			/* asume this routine will be able to fix error using just part of buffer */
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 32);
+			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
+			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 1.0);
+			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
+
 
 			gha_free_ctx(ctx);
 		}
@@ -97,7 +106,15 @@ FCT_BGN()
 			UT_CHECK_EQ_FLOAT(res.magnitude, 32768.0);
 			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
 
-			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL);
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 0);
+
+			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 32768.0);
+			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
+
+			res.magnitude = 32760.0;
+
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 32);
 
 			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
 			UT_CHECK_EQ_FLOAT(res.magnitude, 32768.0);
@@ -122,7 +139,7 @@ FCT_BGN()
 
 			gen(11025.0, 32768, buf, 128);
 
-			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL);
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 0);
 
 			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
 			UT_CHECK_EQ_FLOAT(res.magnitude, 32768.0);
@@ -152,7 +169,7 @@ FCT_BGN()
 			gen(11025.0, 32768, buf, 128);
 			gen(5000.0, 32768, buf, 128);
 
-			gha_adjust_info(buf, res, 2, ctx, NULL, NULL);
+			gha_adjust_info(buf, res, 2, ctx, NULL, NULL, 0);
 
 			fct_chk_eq_int(0, compare_phase(0, res[0].phase, 0.01));
 			UT_CHECK_EQ_FLOAT(round(res[0].magnitude), 32768.0);
@@ -186,7 +203,7 @@ FCT_BGN()
 			gen(11025.0, 16384, buf, 128);
 			gen(5512.5, 32768, buf, 128);
 
-			gha_adjust_info(buf, res, 2, ctx, NULL, NULL);
+			gha_adjust_info(buf, res, 2, ctx, NULL, NULL, 0);
 
 			fct_chk_eq_int(0, compare_phase(0, res[0].phase, 0.01));
 			UT_CHECK_EQ_FLOAT(round(res[0].magnitude), 16384.0);
@@ -198,6 +215,35 @@ FCT_BGN()
 
 			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res[0].frequency, res[0].phase, res[0].magnitude);
 			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res[1].frequency, res[1].phase, res[1].magnitude);
+
+			gha_free_ctx(ctx);
+		}
+		FCT_TEST_END();
+
+		FCT_TEST_BGN(one_tone_11025_a32768_partial_frame)
+		{
+			float buf[128] = {0};
+			gha_ctx_t ctx;
+			struct gha_info res;
+			ctx = gha_create_ctx(128);
+			gha_set_max_magnitude(ctx, 32768);
+			gha_set_max_loops(ctx, 14);
+
+			gen(11025.0, 32768, buf, 128);
+
+			memset(&buf[96], '\0', 32*sizeof(float));
+
+			gha_analyze_one(buf, &res, ctx);
+
+			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 24576.0);
+			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
+
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 64);
+
+			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 32768.0);
+			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
 
 			gha_free_ctx(ctx);
 		}

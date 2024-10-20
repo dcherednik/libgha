@@ -214,25 +214,25 @@ static void gha_estimate_magnitude(const FLOAT* pcm, const FLOAT* regen, size_t 
 	result->magnitude = t1 / t2;
 }
 
-int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t dim, gha_ctx_t ctx)
+int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t dim, gha_ctx_t ctx, size_t sz)
 {
 	size_t loop;
 	size_t i, j, k, n;
 
 	for (loop = 0; loop < ctx->max_loops; loop++) {
-		memcpy(ctx->tmp_buf, pcm, ctx->size * sizeof(FLOAT));
+		memcpy(ctx->tmp_buf, pcm, sz * sizeof(FLOAT));
 
 		// Use VLA for a while
-		FLOAT BA[dim][ctx->size];
-		FLOAT Bw[dim][ctx->size];
-		FLOAT Bp[dim][ctx->size];
-		FLOAT BAw[dim][ctx->size];
-		FLOAT BAp[dim][ctx->size];
-		FLOAT Bww[dim][ctx->size];
-		FLOAT Bwp[dim][ctx->size];
-		FLOAT Bpp[dim][ctx->size];
+		FLOAT BA[dim][sz];
+		FLOAT Bw[dim][sz];
+		FLOAT Bp[dim][sz];
+		FLOAT BAw[dim][sz];
+		FLOAT BAp[dim][sz];
+		FLOAT Bww[dim][sz];
+		FLOAT Bwp[dim][sz];
+		FLOAT Bpp[dim][sz];
 
-		for (n = 0; n < ctx->size; n++) {
+		for (n = 0; n < sz; n++) {
 			for (k = 0; k < dim; k++) {
 				FLOAT Ak = (info+k)->magnitude;
 				FLOAT wk = (info+k)->frequency;
@@ -258,7 +258,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		memset(M, '\0', dim * 3 * (dim * 3 + 1) * sizeof(double));
 		for (i = 0; i < dim; i++) {
 			for (j = 0; j < dim; j++) {
-				for (n = 0; n < ctx->size; n++) {
+				for (n = 0; n < sz; n++) {
 					if (i == j) {
 						M[i + dim * 0][j + dim * 0] += BA[i][n] * BA[i][n];
 						M[i + dim * 0][j + dim * 1] += ctx->tmp_buf[n] * BAw[i][n] + BA[i][n] * Bw[i][n];
@@ -296,7 +296,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		}
 
 		for (k = 0; k < dim; k++) {
-			for (n = 0; n < ctx->size; n++) {
+			for (n = 0; n < sz; n++) {
 				M[k + dim * 0][dim * 3] += ctx->tmp_buf[n] * BA[k][n];
 				M[k + dim * 1][dim * 3] += ctx->tmp_buf[n] * Bw[k][n];
 				M[k + dim * 2][dim * 3] += ctx->tmp_buf[n] * Bp[k][n];
@@ -397,9 +397,16 @@ void gha_extract_many_simple(FLOAT* pcm, struct gha_info* info, size_t k, gha_ct
 	}
 }
 
-int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx, resuidal_cb_t cb, void* user_ctx)
+int gha_adjust_info(const FLOAT* pcm, struct gha_info* info, size_t k, gha_ctx_t ctx, resuidal_cb_t cb, void* user_ctx, size_t size_limit)
 {
-	int rv = gha_adjust_info_newton_md(pcm, info, k, ctx);
+	size_t actual_size = ctx->size;
+	int rv;
+
+	if (size_limit && size_limit < ctx->size) {
+		actual_size = size_limit;
+	}
+
+	rv = gha_adjust_info_newton_md(pcm, info, k, ctx, actual_size);
 	if (cb && rv != -1)
 		cb(ctx->tmp_buf, ctx->size, user_ctx);
 

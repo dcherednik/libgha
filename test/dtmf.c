@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
 	}
 
 	FLOAT resuidal_adjusted;
-	gha_adjust_info(buf2, res, 2, ctx, &calc_resuidal, &resuidal_adjusted);
+	gha_adjust_info(buf2, res, 2, ctx, &calc_resuidal, &resuidal_adjusted, 0);
 
 	if (resuidal_adjusted > resuidal_simple) {
 		fprintf(stderr, "gha_adjust_info wrong result: %f %f\n", resuidal_simple, resuidal_adjusted);

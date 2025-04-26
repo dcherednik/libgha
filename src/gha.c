@@ -223,23 +223,23 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		memcpy(ctx->tmp_buf, pcm, sz * sizeof(FLOAT));
 
 		// Use VLA for a while
-		FLOAT BA[dim][sz];
-		FLOAT Bw[dim][sz];
-		FLOAT Bp[dim][sz];
-		FLOAT BAw[dim][sz];
-		FLOAT BAp[dim][sz];
-		FLOAT Bww[dim][sz];
-		FLOAT Bwp[dim][sz];
+		double BA[dim][sz];
+		double Bw[dim][sz];
+		double Bp[dim][sz];
+		double BAw[dim][sz];
+		double BAp[dim][sz];
+		double Bww[dim][sz];
+		double Bwp[dim][sz];
+		// double here breaks precision if we have only float in work buffer
 		FLOAT Bpp[dim][sz];
 
 		for (n = 0; n < sz; n++) {
 			for (k = 0; k < dim; k++) {
-				FLOAT Ak = (info+k)->magnitude;
-				FLOAT wk = (info+k)->frequency;
-				FLOAT pk = (info+k)->phase;
-				FLOAT s = sin(wk * n + pk);
-				FLOAT c = cos(wk * n + pk);
-				ctx->tmp_buf[n] -= Ak * s;
+				double Ak = (info+k)->magnitude;
+				float t = (info+k)->frequency * n + (info+k)->phase;
+				FLOAT s = sinf(t);
+				FLOAT c = cosf(t);
+				ctx->tmp_buf[n] -= (info+k)->magnitude * s;
 
 				BA[k][n] = -s;
 				Bw[k][n] = -Ak * n * c;
@@ -250,7 +250,6 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 				Bww[k][n] = Ak * n * n * s;
 				Bwp[k][n] = Ak * n * s;
 				Bpp[k][n] = Ak * s;
-
 			}
 		}
 
@@ -297,9 +296,9 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 
 		for (k = 0; k < dim; k++) {
 			for (n = 0; n < sz; n++) {
-				M[k + dim * 0][dim * 3] += ctx->tmp_buf[n] * BA[k][n];
-				M[k + dim * 1][dim * 3] += ctx->tmp_buf[n] * Bw[k][n];
-				M[k + dim * 2][dim * 3] += ctx->tmp_buf[n] * Bp[k][n];
+				M[k + dim * 0][dim * 3] += ctx->tmp_buf[n] * (FLOAT)BA[k][n];
+				M[k + dim * 1][dim * 3] += ctx->tmp_buf[n] * (FLOAT)Bw[k][n];
+				M[k + dim * 2][dim * 3] += ctx->tmp_buf[n] * (FLOAT)Bp[k][n];
 			}
 			M[k + dim * 0][dim * 3] *= 2;
 			M[k + dim * 1][dim * 3] *= 2;

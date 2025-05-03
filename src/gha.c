@@ -234,12 +234,15 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 		FLOAT Bpp[dim][sz];
 
 		for (n = 0; n < sz; n++) {
+			FLOAT tb;
+			tb = ctx->tmp_buf[n];
 			for (k = 0; k < dim; k++) {
 				double Ak = (info+k)->magnitude;
 				float t = (info+k)->frequency * n + (info+k)->phase;
 				FLOAT s = sinf(t);
 				FLOAT c = cosf(t);
-				ctx->tmp_buf[n] -= (info+k)->magnitude * s;
+
+				tb -= (info+k)->magnitude * s;
 
 				BA[k][n] = -s;
 				Bw[k][n] = -Ak * n * c;
@@ -251,6 +254,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 				Bwp[k][n] = Ak * n * s;
 				Bpp[k][n] = Ak * s;
 			}
+			ctx->tmp_buf[n] = tb;
 		}
 
 		double M[dim * 3][dim * 3 + 1];

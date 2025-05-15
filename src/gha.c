@@ -155,8 +155,6 @@ static void gha_search_omega_newton(const FLOAT* pcm, size_t bin, size_t size, s
 			const double new_s = b * c + a * s;
 			c = new_c;
 			s = new_s;
-
-
 		}
 
 		double F = Xr * dXr + Xi * dXi;
@@ -219,99 +217,132 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 	size_t loop;
 	size_t i, j, k, n;
 
+	size_t Msz = dim * 3 * (dim * 3 + 1) * sizeof(double);
+	double* M = alloca(Msz);
+
+	size_t fx0sz = dim * 3 * sizeof(double);
+	double* fx0 = alloca(fx0sz);
+
+	double* BA = alloca(sizeof(double) * dim * sz);
+	double* Bw = alloca(sizeof(double) * dim * sz);
+	double* Bp = alloca(sizeof(double) * dim * sz);
+	double* BAw = alloca(sizeof(double) * dim * sz);
+	double* BAp = alloca(sizeof(double) * dim * sz);
+	double* Bww = alloca(sizeof(double) * dim * sz);
+	double* Bwp = alloca(sizeof(double) * dim * sz);
+	// double here breaks precision if we have only float in work buffer
+	FLOAT* Bpp = alloca(sizeof(FLOAT) * dim + sz);
+
 	for (loop = 0; loop < ctx->max_loops; loop++) {
 		memcpy(ctx->tmp_buf, pcm, sz * sizeof(FLOAT));
 
-		// Use VLA for a while
-		double BA[dim][sz];
-		double Bw[dim][sz];
-		double Bp[dim][sz];
-		double BAw[dim][sz];
-		double BAp[dim][sz];
-		double Bww[dim][sz];
-		double Bwp[dim][sz];
-		// double here breaks precision if we have only float in work buffer
-		FLOAT Bpp[dim][sz];
+		for (k = 0; k < dim; k++) {
+			double* ba = BA + (k * sz);
+			double* bw = Bw + (k * sz);
+			double* bp = Bp + (k * sz);
+			double* baw = BAw + (k * sz);
+			double* bap = BAp + (k * sz);
+			double* bww = Bww + (k * sz);
+			double* bwp = Bwp + (k * sz);
+			FLOAT* bpp = Bpp + (k * sz);
 
-		for (n = 0; n < sz; n++) {
-			FLOAT tb;
-			tb = ctx->tmp_buf[n];
-			for (k = 0; k < dim; k++) {
+			for (n = 0; n < sz; n++) {
 				double Ak = (info+k)->magnitude;
 				float t = (info+k)->frequency * n + (info+k)->phase;
 				FLOAT s = sinf(t);
 				FLOAT c = cosf(t);
 
-				tb -= (info+k)->magnitude * s;
+				ctx->tmp_buf[n] -= (info+k)->magnitude * s;
 
-				BA[k][n] = -s;
-				Bw[k][n] = -Ak * n * c;
-				Bp[k][n] = -Ak * c;
+				ba[n] = -s;
+				bw[n] = -Ak * n * c;
+				bp[n] = -Ak * c;
 
-				BAw[k][n] = -n * c;
-				BAp[k][n] = -c;
-				Bww[k][n] = Ak * n * n * s;
-				Bwp[k][n] = Ak * n * s;
-				Bpp[k][n] = Ak * s;
+				baw[n] = -n * c;
+				bap[n] = -c;
+				bww[n] = Ak * n * n * s;
+				bwp[n] = Ak * n * s;
+				bpp[n] = Ak * s;
 			}
-			ctx->tmp_buf[n] = tb;
 		}
 
-		double M[dim * 3][dim * 3 + 1];
-		memset(M, '\0', dim * 3 * (dim * 3 + 1) * sizeof(double));
+		memset(M, '\0', Msz);
 		for (i = 0; i < dim; i++) {
+			double* m0 = M + (dim * 3 + 1) * (i + dim * 0);
+			double* m1 = M + (dim * 3 + 1) * (i + dim * 1);
+			double* m2 = M + (dim * 3 + 1) * (i + dim * 2);
+
+			double* ba = BA + (i * sz);
+			double* bw = Bw + (i * sz);
+			double* bp = Bp + (i * sz);
+			double* baw = BAw + (i * sz);
+			double* bap = BAp + (i * sz);
+			double* bww = Bww + (i * sz);
+			double* bwp = Bwp + (i * sz);
+			FLOAT* bpp = Bpp + (i * sz);
+
 			for (j = 0; j < dim; j++) {
-				for (n = 0; n < sz; n++) {
-					if (i == j) {
-						M[i + dim * 0][j + dim * 0] += BA[i][n] * BA[i][n];
-						M[i + dim * 0][j + dim * 1] += ctx->tmp_buf[n] * BAw[i][n] + BA[i][n] * Bw[i][n];
-						M[i + dim * 0][j + dim * 2] += ctx->tmp_buf[n] * BAp[i][n] + BA[i][n] * Bp[i][n];
+				if (i == j) {
+					for (n = 0; n < sz; n++) {
+						m0[j + dim * 0] += ba[n] * ba[n];
+						m0[j + dim * 1] += ctx->tmp_buf[n] * baw[n] + ba[n] * bw[n];
+						m0[j + dim * 2] += ctx->tmp_buf[n] * bap[n] + ba[n] * bp[n];
 
-						M[i + dim * 1][j + dim * 1] += ctx->tmp_buf[n] * Bww[i][n] + Bw[i][n] * Bw[i][n];
-						M[i + dim * 1][j + dim * 2] += ctx->tmp_buf[n] * Bwp[i][n] + Bw[i][n] * Bp[i][n];
+						m1[j + dim * 1] += ctx->tmp_buf[n] * bww[n] + bw[n] * bw[n];
+						m1[j + dim * 2] += ctx->tmp_buf[n] * bwp[n] + bw[n] * bp[n];
 
-						M[i + dim * 2][j + dim * 2] += ctx->tmp_buf[n] * Bpp[i][n] + Bp[i][n] * Bp[i][n];
-					} else {
-						M[i + dim * 0][j + dim * 0] += BA[i][n] * BA[j][n];
-						M[i + dim * 0][j + dim * 1] += BA[i][n] * Bw[j][n];
-						M[i + dim * 0][j + dim * 2] += BA[i][n] * Bp[j][n];
+						m2[j + dim * 2] += ctx->tmp_buf[n] * bpp[n] + bp[n] * bp[n];
+					}
+				} else {
+					for (n = 0; n < sz; n++) {
+						double* baj = BA + (j * sz);
+						double* bpj = Bp + (j * sz);
+						double* bwj = Bw + (j * sz);
+						m0[j + dim * 0] += ba[n] * baj[n];
+						m0[j + dim * 1] += ba[n] * bwj[n];
+						m0[j + dim * 2] += ba[n] * bpj[n];
 
-						M[i + dim * 1][j + dim * 1] += Bw[i][n] * Bw[j][n];
-						M[i + dim * 1][j + dim * 2] += Bw[i][n] * Bp[j][n];
+						m1[j + dim * 1] += bw[n] * bwj[n];
+						m1[j + dim * 2] += bw[n] * bpj[n];
 
-						M[i + dim * 2][j + dim * 2] += Bp[i][n] * Bp[j][n];
+						m2[j + dim * 2] += bp[n] * bpj[n];
 					}
 				}
-				M[i + dim * 0][j + dim * 0] *= 2;
-				M[i + dim * 0][j + dim * 1] *= 2;
-				M[i + dim * 0][j + dim * 2] *= 2;
+				m0[j + dim * 0] *= 2;
+				m0[j + dim * 1] *= 2;
+				m0[j + dim * 2] *= 2;
 
-				M[i + dim * 1][j + dim * 1] *= 2;
-				M[i + dim * 1][j + dim * 2] *= 2;
+				m1[j + dim * 1] *= 2;
+				m1[j + dim * 2] *= 2;
 
-				M[i + dim * 2][j + dim * 2] *= 2;
+				m2[j + dim * 2] *= 2;
 
 
-				M[i + dim * 0][j + dim * 1] = M[i + dim * 1][j + dim * 0];
-				M[i + dim * 0][j + dim * 2] = M[i + dim * 2][j + dim * 0];
-				M[i + dim * 1][j + dim * 2] = M[i + dim * 2][j + dim * 1];
+				m0[j + dim * 1] = m1[j + dim * 0];
+				m0[j + dim * 2] = m2[j + dim * 0];
+				m1[j + dim * 2] = m2[j + dim * 1];
 			}
 		}
 
 		for (k = 0; k < dim; k++) {
+			double* m0 = M + (dim * 3 + 1) * (k + dim * 0);
+			double* m1 = M + (dim * 3 + 1) * (k + dim * 1);
+			double* m2 = M + (dim * 3 + 1) * (k + dim * 2);
+			double* ba = BA + (k * sz); 
+			double* bw = Bw + (k * sz); 
+			double* bp = Bp + (k * sz); 
 			for (n = 0; n < sz; n++) {
-				M[k + dim * 0][dim * 3] += ctx->tmp_buf[n] * (FLOAT)BA[k][n];
-				M[k + dim * 1][dim * 3] += ctx->tmp_buf[n] * (FLOAT)Bw[k][n];
-				M[k + dim * 2][dim * 3] += ctx->tmp_buf[n] * (FLOAT)Bp[k][n];
+				m0[dim * 3] += ctx->tmp_buf[n] * (FLOAT)ba[n];
+				m1[dim * 3] += ctx->tmp_buf[n] * (FLOAT)bw[n];
+				m2[dim * 3] += ctx->tmp_buf[n] * (FLOAT)bp[n];
 			}
-			M[k + dim * 0][dim * 3] *= 2;
-			M[k + dim * 1][dim * 3] *= 2;
-			M[k + dim * 2][dim * 3] *= 2;
+			m0[dim * 3] *= 2;
+			m1[dim * 3] *= 2;
+			m2[dim * 3] *= 2;
 		}
 
-		double fx0[dim * 3];
-		memset(fx0, '\0', dim * 3 * sizeof(double));
-		if(sle_solve(&M[0][0], dim * 3, fx0)) {
+		memset(fx0, '\0', fx0sz);
+		if(sle_solve(M, dim * 3, fx0)) {
 			return -1;
 		}
 

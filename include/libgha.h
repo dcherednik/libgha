@@ -33,6 +33,7 @@ struct gha_info {
  */
 gha_ctx_t gha_create_ctx(size_t size);
 
+void gha_set_upsample(gha_ctx_t ctx, int enable);
 void gha_set_max_loops(gha_ctx_t ctx, size_t max_loops);
 void gha_set_max_magnitude(gha_ctx_t ctx, FLOAT magnitude);
 

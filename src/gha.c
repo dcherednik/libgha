@@ -4,6 +4,8 @@
 
 #include <tools/kiss_fftr.h>
 
+#include <sys/param.h>
+
 /*
  * Ref: http://www.apsipa.org/proceedings_2009/pdf/WA-L3-3.pdf
  */
@@ -12,6 +14,7 @@ struct gha_ctx {
 	size_t size;
 	size_t max_loops;
 	kiss_fftr_cfg fftr;
+	kiss_fftr_cfg fftr_inv;
 
 	kiss_fft_cpx* fft_out;
 	FLOAT* freq;
@@ -19,14 +22,22 @@ struct gha_ctx {
 
 	FLOAT* tmp_buf;
 	FLOAT max_magnitude;
+	int upsample;
 };
 
 static void gha_init_window(gha_ctx_t ctx)
 {
 	size_t i;
-	size_t n = ctx->size + 1;
-	for (i = 0; i < ctx->size; i++) {
-		ctx->window[i] = sin(M_PI * (i + 1) / n);
+	const size_t n = ctx->size + 1;
+	const size_t half = ctx->size / 2;
+
+	for (i = 0; i < half; i++) {
+		ctx->window[i] = sinf(M_PI * (i + 1) / n);
+		ctx->window[i] *= ctx->window[i];
+	}
+
+	for (i = half; i < ctx->size; i++) {
+		ctx->window[i] = ctx->window[ctx->size - 1 - i];
 	}
 }
 
@@ -39,14 +50,19 @@ gha_ctx_t gha_create_ctx(size_t size)
 	ctx->size = size;
 	ctx->max_loops = 7;
 	ctx->max_magnitude = 1;
+	ctx->upsample = 0;
 
 	ctx->fftr = kiss_fftr_alloc(size, 0, NULL, NULL);
 	if (!ctx->fftr)
 		goto exit_free_gha_ctx;
 
+	ctx->fftr_inv = kiss_fftr_alloc(size * 2, 1, NULL, NULL);
+	if (!ctx->fftr_inv)
+		goto exit_free_fftr_ctx;
+
 	ctx->freq = malloc(sizeof(FLOAT) * size);
 	if (!ctx->freq)
-		goto exit_free_fftr_ctx;
+		goto exit_free_fftr_inv_ctx;
 
 	ctx->window = malloc(sizeof(FLOAT) * size);
 	if (!ctx->window)
@@ -56,7 +72,7 @@ gha_ctx_t gha_create_ctx(size_t size)
 	if (!ctx->tmp_buf)
 		goto exit_free_window;
 
-	ctx->fft_out = malloc(sizeof(kiss_fft_cpx) * (size/2 + 1));
+	ctx->fft_out = calloc(size + 1, sizeof(kiss_fft_cpx));
 	if (!ctx->fft_out)
 		goto exit_free_tmp_buf;
 
@@ -69,6 +85,8 @@ exit_free_window:
 	free(ctx->window);
 exit_free_freq:
 	free(ctx->freq);
+exit_free_fftr_inv_ctx:
+	kiss_fftr_free(ctx->fftr_inv);
 exit_free_fftr_ctx:
 	kiss_fftr_free(ctx->fftr);
 exit_free_gha_ctx:
@@ -86,13 +104,19 @@ void gha_set_max_magnitude(gha_ctx_t ctx, FLOAT magnitude)
 	ctx->max_magnitude = magnitude;
 }
 
+void gha_set_upsample(gha_ctx_t ctx, int enable)
+{
+	ctx->upsample = enable;
+}
+
 void gha_free_ctx(gha_ctx_t ctx)
 {
 	free(ctx->fft_out);
 	free(ctx->tmp_buf);
 	free(ctx->window);
 	free(ctx->freq);
-	kiss_fft_free(ctx->fftr);
+	kiss_fftr_free(ctx->fftr_inv);
+	kiss_fftr_free(ctx->fftr);
 	free(ctx);
 }
 
@@ -113,6 +137,15 @@ static size_t gha_estimate_bin(gha_ctx_t ctx)
 	return j;
 }
 
+static void resample_fft(gha_ctx_t ctx, FLOAT* resampled)
+{
+	size_t i = 0;
+	kiss_fftri(ctx->fftr_inv, ctx->fft_out, resampled);
+	for (i = 0; i < ctx->size * 2; i++) {
+		resampled[i] /= (FLOAT)ctx->size;
+	}
+}
+
 /*
  * Perform search of frequency using Newton's method
  * Also we calculate real and imaginary part of Fourier transform at target frequency
@@ -124,7 +157,7 @@ static void gha_search_omega_newton(const FLOAT* pcm, size_t bin, size_t size, s
 	int n;
 	double omega_rad = bin * 2 * M_PI / size;
 
-	const size_t MAX_LOOPS = 8;
+	const size_t MAX_LOOPS = 7;
 	for (loop = 0; loop <= MAX_LOOPS; loop++) {
 		double Xr = 0;
 		double Xi = 0;
@@ -407,7 +440,19 @@ void gha_analyze_one(const FLOAT* pcm, struct gha_info* info, gha_ctx_t ctx)
 
 	bin = gha_estimate_bin(ctx);
 
-	gha_search_omega_newton(ctx->tmp_buf, bin, ctx->size, info);
+	FLOAT* resampled;
+
+	if (ctx->upsample > 0) {
+		resampled = alloca(sizeof(FLOAT) * ctx->size * 2);
+
+		resample_fft(ctx, resampled);
+
+		gha_search_omega_newton(resampled, bin, ctx->size * 2, info);
+		info->frequency *= 2.0;
+	} else {
+		gha_search_omega_newton(ctx->tmp_buf, bin, ctx->size, info);
+	}
+
 	gha_generate_sine(ctx->tmp_buf, ctx->size, info->frequency, info->phase);
 	gha_estimate_magnitude(pcm, ctx->tmp_buf, ctx->size, info);
 }

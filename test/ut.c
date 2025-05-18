@@ -62,6 +62,7 @@ FCT_BGN()
 			struct gha_info res;
 			ctx = gha_create_ctx(128);
 
+			gha_set_upsample(ctx, 1);
 			gen(11025.0, 1, buf, 128);
 
 			gha_analyze_one(buf, &res, ctx);
@@ -85,6 +86,55 @@ FCT_BGN()
 			UT_CHECK_EQ_FLOAT(res.magnitude, 1.0);
 			UT_CHECK_EQ_FLOAT(res.frequency, 1.5707963705);
 
+
+			gha_free_ctx(ctx);
+		}
+		FCT_TEST_END();
+
+		FCT_TEST_BGN(one_tone_20000_a1)
+		{
+			float  buf[128] = {0};
+			gha_ctx_t ctx;
+			struct gha_info res;
+			ctx = gha_create_ctx(128);
+			gha_set_upsample(ctx, 1);
+
+			gen(20000.0, 1, buf, 128);
+
+			gha_analyze_one(buf, &res, ctx);
+
+			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
+			//fct_chk_eq_int(0, compare_phase(0, res.phase, 0.1));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 1.000001);
+			UT_CHECK_EQ_FLOAT(res.frequency, 2.849515);
+
+			gha_free_ctx(ctx);
+		}
+		FCT_TEST_END();
+
+
+		FCT_TEST_BGN(one_tone_22000_a1)
+		{
+			float  buf[512] = {0};
+			gha_ctx_t ctx;
+			struct gha_info res;
+			ctx = gha_create_ctx(512);
+			gha_set_upsample(ctx, 1);
+			gha_set_max_loops(ctx, 64);
+
+			gen(22000.0, 1, buf, 512);
+
+			gha_analyze_one(buf, &res, ctx);
+
+			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
+			UT_CHECK_EQ_FLOAT(res.magnitude, 0.618932);
+			UT_CHECK_EQ_FLOAT(res.frequency, 3.138382);
+
+			gha_adjust_info(buf, &res, 1, ctx, NULL, NULL, 0);
+			fprintf(stderr, "Result: freq: %.10f, phase: %f, magn: %f\n", res.frequency, res.phase, res.magnitude);
+			fct_chk_eq_int(0, compare_phase(0, res.phase, 0.01));
+			UT_CHECK_EQ_FLOAT(res.magnitude, 0.999956);
+			UT_CHECK_EQ_FLOAT(res.frequency, 3.134470);
 
 			gha_free_ctx(ctx);
 		}

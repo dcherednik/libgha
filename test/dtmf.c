@@ -76,6 +76,7 @@ int main(int argc, char** argv) {
 
 	gha_free_ctx(ctx);
 	free(buf);
+	free(buf2);
 
 	if (argc == 8) {
 		double freq[2];

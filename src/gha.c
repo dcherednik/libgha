@@ -264,7 +264,7 @@ int gha_adjust_info_newton_md(const FLOAT* pcm, struct gha_info* info, size_t di
 	double* Bww = alloca(sizeof(double) * dim * sz);
 	double* Bwp = alloca(sizeof(double) * dim * sz);
 	// double here breaks precision if we have only float in work buffer
-	FLOAT* Bpp = alloca(sizeof(FLOAT) * dim + sz);
+	FLOAT* Bpp = alloca(sizeof(FLOAT) * dim * sz);
 
 	for (loop = 0; loop < ctx->max_loops; loop++) {
 		memcpy(ctx->tmp_buf, pcm, sz * sizeof(FLOAT));

@@ -1,4 +1,4 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8...3.26)
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
 
@@ -28,6 +28,13 @@ if (NOT GHA_FFT_LIB)
 
 endif()
 
+SET(GHALIB gha)
+IF (WIN32)
+    add_compile_definitions(LIBGHA_PLATFORM_WINDOWS)
+ELSE()
+    list(APPEND GHALIB m)
+ENDIF()
+
 if (GHA_USE_DOUBLE_API)
     set_source_files_properties(
         src/gha.c
@@ -56,7 +63,7 @@ target_include_directories(
     PRIVATE
     .
 )
-target_link_libraries(main gha m)
+target_link_libraries(main ${GHALIB})
 
 add_executable(dtmf test/dtmf.c)
 target_include_directories(
@@ -64,7 +71,7 @@ target_include_directories(
     PRIVATE
     .
 )
-target_link_libraries(dtmf gha m)
+target_link_libraries(dtmf ${GHALIB})
 
 add_executable(ut test/ut.c)
 target_include_directories(
@@ -73,7 +80,7 @@ target_include_directories(
     src
     .
 )
-target_link_libraries(ut gha m)
+target_link_libraries(ut ${GHALIB})
 
 enable_testing()
 add_test(gha_test_simple_1000_0_a main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/1000hz_0.85.pcm 0 1024 0.142476 0.0000 0.850000)
@@ -83,14 +90,11 @@ add_test(gha_test_simple_1000_90_a main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/10
 add_test(gha_test_simple_1000_90_b main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/1000hz_0.85.pcm 11 1000 0.142476 1.5670 0.850000)
 add_test(gha_test_simple_1000_90_c main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/1000hz_0.85.pcm 11 800 0.142476 1.5670 0.850000)
 
-
 add_test(gha_test_simple_20000_0_a main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/20000hz_0.85.pcm 0 1024 2.8495171 0.0000 0.850000)
 add_test(gha_test_simple_20000_0_b main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/20000hz_0.85.pcm 0 500 2.8495171 0.0000 0.850000)
 add_test(gha_test_simple_20000_0_c main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/20000hz_0.85.pcm 0 128 2.8495171 0.0000 0.850000)
 add_test(gha_test_simple_20000_0_d main ${CMAKE_CURRENT_SOURCE_DIR}/test/data/20000hz_0.85.pcm 0 96 2.8495171 0.0000 0.850000)
 
-
 add_test(gha_test_dtmf_1 dtmf ${CMAKE_CURRENT_SOURCE_DIR}/test/data/dtmf.pcm 32 256 0.547416 0.201057 0.949511 0.200154)
-
 
 add_test(ut ut)

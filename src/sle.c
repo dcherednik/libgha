@@ -1,7 +1,7 @@
 #include "sle.h" 
-#include "stdio.h"
+#include "gha_math.h"
+#include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 
 /*
  * Gaussian elimination

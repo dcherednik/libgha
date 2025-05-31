@@ -1,9 +1,9 @@
 #include <include/libgha.h>
+#include "src/gha_math.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <math.h>
 
 #define UT_CHECK_EQ_FLOAT(V1, V2) \
     fct_xchk(\

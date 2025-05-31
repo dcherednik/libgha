@@ -1,10 +1,21 @@
 #include "sle.h"
+#include "gha_math.h"
 
 #include <include/libgha.h> 
 
 #include <tools/kiss_fftr.h>
 
-#include <sys/param.h>
+#include <stdlib.h>
+
+#ifdef LIBGHA_PLATFORM_WINDOWS
+
+#define alloca _alloca
+
+#else
+
+#include <alloca.h>
+
+#endif
 
 /*
  * Ref: http://www.apsipa.org/proceedings_2009/pdf/WA-L3-3.pdf

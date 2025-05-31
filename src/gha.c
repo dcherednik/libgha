@@ -13,7 +13,11 @@
 
 #else
 
+#ifdef LIBGHA_HAVE_ALLOCA_H
+
 #include <alloca.h>
+
+#endif
 
 #endif
 

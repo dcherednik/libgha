@@ -2,8 +2,12 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.8...3.26)
 
 #set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
 
+INCLUDE (CheckIncludeFiles)
+
 project(gha)
 add_library(gha src/gha.c src/sle.c)
+
+CHECK_INCLUDE_FILES(alloca.h HAVE_ALLOCA_H)
 
 if (NOT GHA_FFT_LIB)
 
@@ -33,6 +37,10 @@ IF (WIN32)
     add_compile_definitions(LIBGHA_PLATFORM_WINDOWS)
 ELSE()
     list(APPEND GHALIB m)
+ENDIF()
+
+IF (HAVE_ALLOCA_H)
+    add_compile_definitions(LIBGHA_HAVE_ALLOCA_H)
 ENDIF()
 
 if (GHA_USE_DOUBLE_API)

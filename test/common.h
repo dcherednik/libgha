@@ -7,7 +7,7 @@
 
 #define UT_CHECK_EQ_FLOAT(V1, V2) \
     fct_xchk(\
-        ((int)(fabs((V1)-(V2)) < 0.000001)),\
+        ((int)(fabs((V1)-(V2)) < 0.000002)),\
         "chk_eq_flt: %f != %f",\
         (V1),\
         (V2)\

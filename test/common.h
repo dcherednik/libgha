@@ -34,7 +34,7 @@ static inline int load_file(const char* name, size_t len, size_t offset, size_t 
 
 	size_t file_size, i;
 
-	FILE* file = fopen(name, "r");
+	FILE* file = fopen(name, "rb");
 
 	if (!file)
 		return -1;
